@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "aplusprompthackathon",
+  "private_key_id": "a211a7c5af1da7603b08f018878d8446b29c4414",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDDBS8aZ3sDqvcF\nQcQ+19NR5n3xp3w8CJMikkkdbx6wr64tN/0LJEk1Ic4MXe1wkt8rj3WpK1DumRNa\nXFhtS0rleiGfkfXuHBjY/2JbZ4L8qFrMOQ3in9OuABigO1BMfLXAZOuyju1XEz3U\nkMFjNkq2kYqJYQizbNzIxhpaQorbJ8gJOh3aSYBiKwaaZV385bxCUa1JHOvWuYjH\nrbTloGapI0M4XvH3AxrW6iDV1HMUXcpBiYS/Zchum0XOCnih6MV6gvDpfyL+LPiu\nSGoolXCjm56KymSEocdGfK3/jkqooA7WNZWA9Xks4SjIjxxzsWu09CKyv97NKPCR\nTmgfa07HAgMBAAECggEAC58n9vFavdW24cvRB5OyBqvvLnL2Ltet+P3xuHzSPeJC\nRXSUMlFHwZBRqKACUdaW0RA8CUhJCub5ZcWiCWVWwcUc8tbuanGnM2tIr7zD7A2W\nV5xAzRQMN87OqOHP/7bg1+XLu/jTgQBnC19S/vgRzL5wnI45SAQBRj+z+1QC1Vt3\nZPK/3vPYTy6bYMsdafdsBywOQ/LifvtPPk7TppDFQ1xpFJYmj+brBTMhJgLhRhN+\nIo3EuyHDTHE30GVjLmdhUWS2aseHOQ+OIvAFmmyCE2psFgokZL4GYTogzWXpMevH\nYJYJ+ngE2mOC7gzn0nBZqfVB3y362vHPhRhjB/jKpQKBgQDngPyuNUfil6adJa3V\ndG1/jzIC5W3LeZX3eig4vKlaIqEW5FxRLG2uoYB6+S5/Eo5aKbBFANOEOPK2l/U8\nfZIX8MrHQ3zvxTueNt3Ll7KEcRD+rk+c8wt4E8H7ZhFAolZr9LTc9EXTiHLq7YrR\nVTlgHRAWWjt5WYG/tVuow8bLTQKBgQDXp+xdRxgETqsuE0/rklhyR42P14gHwlNv\nosuoUGXN81+RPYtzdgb9ntZ375cFrN/o1KKHsMYWT+jYhRasA6iZXSTz9vb1Vrdl\nP+tSRV39eXcXQrAKy918tIPU4TemXnPDsmD9vE6t+RhzTm0EAk300+fcd3dAY5Uz\nOZ+O3H1wYwKBgC9KvlOoNsMnT7YSmGxemG/ShNjqnX9Pmz8vCUBt6fqr0FSo2eML\nPGzMOT7l4IW8+K+ajJPME2mTaKG8cTCmRk31trb2JnOkywULGEwa9TDxGBOu8DyT\nuegRwTLmKugVQapUFw58KDeKTE+Jry4MRuhHh53JWRT1H/hVyB+1vsqRAoGAWOAy\nsCp5gmTtdTquSDZyzv4gIDTCMfhrLGnaJs6jdiIjs5a6nuX4cZOBbcJG6ibZzHm9\nVdCLgmyCWKFYu6FyXWoerZCNLIUFZevWznwaBTmG1AY+yORFrnwyjIwYxC7O5Mrh\n4BA4GMi8w+CBWxKcEBc4ygpOEjI4LflEgbrq02MCgYEAvVTnv/sTZUfDdg/r0FKW\nWKbMCWSPJmlrXtsxESDl1VvttXPaQVylKimIFaTS0SltDvGoq6i+SC7YSlTczD3Q\n+SVIlqDQAGLoG8bXmb2pFl3+nsB/q1jPko7exUUwIaB8BeA8Ct3MR2yW61n8eXH0\nyMaGbLunAvSVB7tx4sUsJII=\n-----END PRIVATE KEY-----\n",
+  "client_email": "gemma-web-client@aplusprompthackathon.iam.gserviceaccount.com",
+  "client_id": "106108480636930818513",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/gemma-web-client%40aplusprompthackathon.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
