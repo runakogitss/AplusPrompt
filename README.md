@@ -20,7 +20,7 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:3000`.
+Open `http://localhost:3000`. Once you have finish npm install running through your computer.
 
 The app works without credentials by returning deterministic demo fallbacks.
 
