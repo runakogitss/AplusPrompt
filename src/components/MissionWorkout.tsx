@@ -5,6 +5,12 @@ import type { ImprovedPrompt, Mission, OutputComparison, PlaybookEntry, PromptSc
 
 type Status = "idle" | "scoring" | "done" | "error";
 
+function formatScenarioValue(value: unknown) {
+  if (Array.isArray(value)) return value;
+  if (typeof value === "string") return value;
+  return JSON.stringify(value);
+}
+
 export function MissionWorkout({ mission }: { mission: Mission }) {
   const [prompt, setPrompt] = useState(mission.bad_prompt_example);
   const [status, setStatus] = useState<Status>("idle");
@@ -14,15 +20,17 @@ export function MissionWorkout({ mission }: { mission: Mission }) {
   const [saved, setSaved] = useState(false);
   const [aiSource, setAiSource] = useState<string | null>(null);
   const [saveStorage, setSaveStorage] = useState<string | null>(null);
+  const [showHint, setShowHint] = useState(false);
 
-  const scenarioText = useMemo(() => JSON.stringify(mission.scenario, null, 2), [mission.scenario]);
+  const scenarioItems = useMemo(() => Object.entries(mission.scenario), [mission.scenario]);
+  const hintItems = useMemo(() => mission.success_criteria.slice(0, 4), [mission.success_criteria]);
 
   async function runWorkout() {
     if (!prompt.trim()) return;
     setStatus("scoring");
     setSaved(false);
-    setSaved(false);
     setAiSource(null);
+    setShowHint(false);
     try {
       const scoreResponse = await fetch("/api/score-prompt", {
         method: "POST",
@@ -69,7 +77,7 @@ export function MissionWorkout({ mission }: { mission: Mission }) {
       mission_id: mission.id,
       title: `${mission.title} prompt`,
       final_prompt: improved.improved_prompt,
-      score: Math.max(score.total_score, 82),
+      score: score.total_score,
       tags: mission.skill_focus.slice(0, 3).map((tag) => tag.toLowerCase().replaceAll(" ", "-")),
       created_at: new Date().toISOString()
     };
@@ -88,7 +96,29 @@ export function MissionWorkout({ mission }: { mission: Mission }) {
     <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
       <section className="rounded-lg border border-ink/10 bg-white p-5 shadow-soft">
         <p className="text-xs font-black uppercase text-clay">Scenario</p>
-        <pre className="mt-3 max-h-80 overflow-auto whitespace-pre-wrap rounded-md bg-mint p-4 text-sm leading-6 text-ink/80">{scenarioText}</pre>
+        <div className="mt-3 max-h-80 overflow-auto rounded-md bg-mint p-4">
+          <dl className="grid gap-4 text-sm leading-6">
+            {scenarioItems.map(([key, value]) => {
+              const formatted = formatScenarioValue(value);
+              return (
+                <div key={key}>
+                  <dt className="font-black capitalize text-moss">{key.replaceAll("_", " ")}</dt>
+                  <dd className="mt-1 text-ink/80">
+                    {Array.isArray(formatted) ? (
+                      <ul className="space-y-1">
+                        {formatted.map((item) => (
+                          <li key={String(item)}>- {String(item)}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      formatted
+                    )}
+                  </dd>
+                </div>
+              );
+            })}
+          </dl>
+        </div>
         <div className="mt-5">
           <p className="text-xs font-black uppercase text-clay">Success form</p>
           <ul className="mt-3 space-y-2 text-sm text-ink/75">
@@ -114,10 +144,20 @@ export function MissionWorkout({ mission }: { mission: Mission }) {
           <button onClick={runWorkout} disabled={status === "scoring"} className="focus-ring min-h-11 rounded-md bg-ink px-5 py-3 text-sm font-bold text-white disabled:opacity-60">
             {status === "scoring" ? "Scoring your rep..." : "Score my prompt"}
           </button>
-          <button onClick={() => setPrompt(mission.improved_prompt_example)} className="focus-ring min-h-11 rounded-md border border-ink/15 px-5 py-3 text-sm font-bold">
+          <button onClick={() => setShowHint((current) => !current)} className="focus-ring min-h-11 rounded-md border border-ink/15 px-5 py-3 text-sm font-bold">
             Need hint?
           </button>
         </div>
+        {showHint ? (
+          <div className="mt-4 rounded-md bg-mint p-4">
+            <p className="text-xs font-black uppercase text-clay">Try adding</p>
+            <ul className="mt-2 space-y-2 text-sm leading-6 text-ink/75">
+              {hintItems.map((item) => (
+                <li key={item}>- {item.toLowerCase()}.</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
         {status === "error" ? <p className="mt-4 text-sm font-bold text-clay">Something went wrong. Try again.</p> : null}
         {aiSource ? (
           <p className="mt-4 text-xs font-bold text-ink/50">

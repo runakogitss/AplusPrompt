@@ -3,22 +3,26 @@ import type { CustomerSaveAgentOutput, ImprovedPrompt, OutputComparison, PromptS
 
 export function scoreFallback(userPrompt: string, missionId: string): PromptScore {
   const prompt = userPrompt.toLowerCase();
-  const hasContext = /bakery|coffee|business|customer|bandung|target|audience/.test(prompt);
+  const wordCount = prompt.trim().split(/\s+/).filter(Boolean).length;
+  const hasContext = /bakery|coffee|business|bandung|target|audience|owner|shop|restaurant|salon/.test(prompt);
   const hasPolicy = /policy|refund|voucher|approval|budget|under|avoid|do not/.test(prompt);
   const hasFormat = /table|list|json|draft|under \d+|format|step/.test(prompt);
   const hasVerification = /uncertain|assumption|verify|risk|flag|manual|approval/.test(prompt);
   const hasAction = /recommend|action|next|offer|cta|plan|reply|draft/.test(prompt);
+  const hasSource = /message|competitor|policy|source|data|complaint|review|transcript|email/.test(prompt);
 
   const category_scores = {
-    goal_clarity: hasAction ? 12 : 8,
-    business_context: hasContext ? 16 : 2,
-    input_source_clarity: /message|competitor|policy|source|data|customer/.test(prompt) ? 12 : 3,
+    goal_clarity: hasAction ? 12 : wordCount >= 8 ? 7 : 3,
+    business_context: hasContext ? 16 : 1,
+    input_source_clarity: hasSource ? 12 : 1,
     output_format: hasFormat ? 8 : 0,
     constraints: hasPolicy ? 12 : 1,
     verification: hasVerification ? 8 : 0,
-    actionability: hasAction ? 12 : 5
+    actionability: hasAction ? 12 : wordCount >= 8 ? 5 : 2
   };
-  const total_score = Object.values(category_scores).reduce((sum, value) => sum + value, 0);
+  const rawScore = Object.values(category_scores).reduce((sum, value) => sum + value, 0);
+  const contextSignals = [hasContext, hasPolicy, hasFormat, hasVerification, hasSource].filter(Boolean).length;
+  const total_score = wordCount < 6 ? Math.min(rawScore, 28) : contextSignals <= 1 ? Math.min(rawScore, 42) : rawScore;
   const grade = total_score >= 80 ? "A" : total_score >= 70 ? "B" : total_score >= 60 ? "C" : "Needs Training";
   const user_title = total_score >= 80 ? "AI Operator" : total_score >= 70 ? "Context Builder" : total_score >= 60 ? "Prompt Trainee" : "AI Novice";
 
@@ -32,13 +36,21 @@ export function scoreFallback(userPrompt: string, missionId: string): PromptScor
       !hasContext ? "Missing business context" : "",
       !hasPolicy ? "Missing policy, budget, tone, or other constraints" : "",
       !hasFormat ? "No clear output format" : "",
+      !hasSource ? "Missing the source details AI should use" : "",
       !hasVerification ? "No instruction to flag uncertainty or risky promises" : ""
     ].filter(Boolean),
     coach_explanation:
-      missionId === "customer_save"
+      total_score >= 80
+        ? "Strong form. This prompt gives AI the business situation, source details, policy constraints, output expectations, and an approval check."
+        : total_score < 40
+        ? "This prompt is too vague for AI to understand the business situation. Add the business context, the source details, the rules to follow, and the output you want."
+        : missionId === "customer_save"
         ? "Good start, but this prompt needs stronger form. The AI does not know your bakery policy, tone, or approval rules, so it may overpromise to the customer."
         : "Good start, but the prompt needs more context, constraints, and a clear output shape before AI can produce business-ready work.",
-    next_reps: ["Add business context", "Add the source or customer message", "Add constraints", "Ask AI to flag risks"]
+    next_reps:
+      total_score >= 80
+        ? ["Save this prompt to your playbook", "Reuse it with a new customer message", "Keep the approval check for risky replies"]
+        : ["Add business context", "Add the source or customer message", "Add constraints", "Ask AI to flag risks"]
   };
 }
 

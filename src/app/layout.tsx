@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ConnectionStatus } from "@/components/ConnectionStatus";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -22,7 +21,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <Link href="/playbook">Playbook</Link>
               <Link href="/agent/customer-save">Customer Save Agent</Link>
               <Link href="/certificate">Certificate</Link>
-              <ConnectionStatus />
             </div>
           </nav>
         </header>
