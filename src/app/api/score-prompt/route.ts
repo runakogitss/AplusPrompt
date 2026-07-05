@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getMission } from "@/data/missions";
 import { rubric } from "@/data/rubric";
+import { recordPromptAttempt } from "@/lib/db";
 import { scoreFallback } from "@/lib/fallbacks";
 import { callGemmaJson } from "@/lib/gemma";
 import type { PromptScore } from "@/lib/types";
@@ -19,5 +20,11 @@ export async function POST(request: Request) {
   if (!mission) return NextResponse.json({ error: "Mission not found." }, { status: 404 });
 
   const gemma = await callGemmaJson<PromptScore>("score", { ...parsed.data, mission, rubric });
-  return NextResponse.json(gemma ?? scoreFallback(parsed.data.user_prompt, parsed.data.mission_id));
+  const result = gemma ?? scoreFallback(parsed.data.user_prompt, parsed.data.mission_id);
+
+  await recordPromptAttempt(parsed.data.mission_id, parsed.data.user_prompt, result.total_score);
+
+  return NextResponse.json(result, {
+    headers: { "X-AI-Source": gemma ? "gemma" : "fallback" }
+  });
 }

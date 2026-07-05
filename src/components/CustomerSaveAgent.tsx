@@ -14,6 +14,7 @@ export function CustomerSaveAgent() {
   const [policy, setPolicy] = useState(JSON.stringify(customerSavePolicy, null, 2));
   const [result, setResult] = useState<CustomerSaveAgentOutput | null>(null);
   const [loading, setLoading] = useState(false);
+  const [aiSource, setAiSource] = useState<string | null>(null);
 
   async function runAgent() {
     setLoading(true);
@@ -22,6 +23,7 @@ export function CustomerSaveAgent() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ business_type: businessType, complaint, policy, tone })
     });
+    setAiSource(response.headers.get("X-AI-Source"));
     setResult(await response.json());
     setLoading(false);
   }
@@ -51,6 +53,11 @@ export function CustomerSaveAgent() {
         <button onClick={runAgent} disabled={loading} className="focus-ring mt-5 min-h-11 rounded-md bg-ink px-5 py-3 text-sm font-bold text-white disabled:opacity-60">
           {loading ? "Running supervised workflow..." : "Run Customer Save Agent"}
         </button>
+        {aiSource ? (
+          <p className="mt-3 text-xs font-bold text-ink/50">
+            Workflow powered by {aiSource === "gemma" ? "Google Cloud Gemma" : "local fallback policy engine"}
+          </p>
+        ) : null}
       </section>
 
       <section className="rounded-lg border border-ink/10 bg-white p-5 shadow-soft">

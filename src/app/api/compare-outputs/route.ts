@@ -19,5 +19,8 @@ export async function POST(request: Request) {
   if (!mission) return NextResponse.json({ error: "Mission not found." }, { status: 404 });
 
   const gemma = await callGemmaJson<OutputComparison>("compare", { ...parsed.data, mission });
-  return NextResponse.json(gemma ?? comparisonFallback(parsed.data.mission_id));
+  const result = gemma ?? comparisonFallback(parsed.data.mission_id);
+  return NextResponse.json(result, {
+    headers: { "X-AI-Source": gemma ? "gemma" : "fallback" }
+  });
 }

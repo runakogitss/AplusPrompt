@@ -12,6 +12,8 @@ export function MissionWorkout({ mission }: { mission: Mission }) {
   const [improved, setImproved] = useState<ImprovedPrompt | null>(null);
   const [comparison, setComparison] = useState<OutputComparison | null>(null);
   const [saved, setSaved] = useState(false);
+  const [aiSource, setAiSource] = useState<string | null>(null);
+  const [saveStorage, setSaveStorage] = useState<string | null>(null);
 
   const scenarioText = useMemo(() => JSON.stringify(mission.scenario, null, 2), [mission.scenario]);
 
@@ -19,18 +21,38 @@ export function MissionWorkout({ mission }: { mission: Mission }) {
     if (!prompt.trim()) return;
     setStatus("scoring");
     setSaved(false);
+    setSaved(false);
+    setAiSource(null);
     try {
-      const scoreResult = await postJson<PromptScore>("/api/score-prompt", { mission_id: mission.id, user_prompt: prompt });
-      const improvedResult = await postJson<ImprovedPrompt>("/api/improve-prompt", {
-        mission_id: mission.id,
-        user_prompt: prompt,
-        score_result: scoreResult
+      const scoreResponse = await fetch("/api/score-prompt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mission_id: mission.id, user_prompt: prompt })
       });
-      const comparisonResult = await postJson<OutputComparison>("/api/compare-outputs", {
-        mission_id: mission.id,
-        original_prompt: prompt,
-        improved_prompt: improvedResult.improved_prompt
+      if (!scoreResponse.ok) throw new Error("Request failed");
+      const scoreResult = (await scoreResponse.json()) as PromptScore;
+      setAiSource(scoreResponse.headers.get("X-AI-Source"));
+
+      const improvedResponse = await fetch("/api/improve-prompt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mission_id: mission.id, user_prompt: prompt, score_result: scoreResult })
       });
+      if (!improvedResponse.ok) throw new Error("Request failed");
+      const improvedResult = (await improvedResponse.json()) as ImprovedPrompt;
+
+      const comparisonResponse = await fetch("/api/compare-outputs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mission_id: mission.id,
+          original_prompt: prompt,
+          improved_prompt: improvedResult.improved_prompt
+        })
+      });
+      if (!comparisonResponse.ok) throw new Error("Request failed");
+      const comparisonResult = (await comparisonResponse.json()) as OutputComparison;
+
       setScore(scoreResult);
       setImproved(improvedResult);
       setComparison(comparisonResult);
@@ -52,14 +74,13 @@ export function MissionWorkout({ mission }: { mission: Mission }) {
       created_at: new Date().toISOString()
     };
 
-    await fetch("/api/playbook", {
+    const response = await fetch("/api/playbook", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(entry)
     });
-
-    const existing = JSON.parse(localStorage.getItem("aprompt_playbook") ?? "[]") as PlaybookEntry[];
-    localStorage.setItem("aprompt_playbook", JSON.stringify([entry, ...existing]));
+    const data = (await response.json()) as { storage?: string };
+    setSaveStorage(data.storage ?? "saved");
     setSaved(true);
   }
 
@@ -98,6 +119,11 @@ export function MissionWorkout({ mission }: { mission: Mission }) {
           </button>
         </div>
         {status === "error" ? <p className="mt-4 text-sm font-bold text-clay">Something went wrong. Try again.</p> : null}
+        {aiSource ? (
+          <p className="mt-4 text-xs font-bold text-ink/50">
+            AI coach: {aiSource === "gemma" ? "Google Cloud Gemma" : "local fallback rubric"}
+          </p>
+        ) : null}
 
         {score ? (
           <div className="mt-6 rounded-md border border-ink/10 p-4">
@@ -145,7 +171,7 @@ export function MissionWorkout({ mission }: { mission: Mission }) {
               <h2 className="mt-1 text-2xl font-black">The better output should be obvious.</h2>
             </div>
             <button onClick={savePrompt} className="focus-ring min-h-11 rounded-md bg-moss px-5 py-3 text-sm font-bold text-white">
-              {saved ? "Saved to playbook" : "Save final prompt"}
+              {saved ? `Saved to ${saveStorage === "supabase" ? "Supabase playbook" : "playbook"}` : "Save final prompt"}
             </button>
           </div>
           <div className="mt-5 grid gap-4 md:grid-cols-2">
@@ -170,14 +196,4 @@ export function MissionWorkout({ mission }: { mission: Mission }) {
       ) : null}
     </div>
   );
-}
-
-async function postJson<T>(url: string, body: unknown): Promise<T> {
-  const response = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body)
-  });
-  if (!response.ok) throw new Error("Request failed");
-  return response.json() as Promise<T>;
 }

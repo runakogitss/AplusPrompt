@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getMission } from "@/data/missions";
+import { recordImprovedPrompt } from "@/lib/db";
 import { improveFallback } from "@/lib/fallbacks";
 import { callGemmaJson } from "@/lib/gemma";
 import type { ImprovedPrompt } from "@/lib/types";
@@ -19,5 +20,11 @@ export async function POST(request: Request) {
   if (!mission) return NextResponse.json({ error: "Mission not found." }, { status: 404 });
 
   const gemma = await callGemmaJson<ImprovedPrompt>("improve", { ...parsed.data, mission });
-  return NextResponse.json(gemma ?? improveFallback(parsed.data.mission_id));
+  const result = gemma ?? improveFallback(parsed.data.mission_id);
+
+  await recordImprovedPrompt(parsed.data.mission_id, result.improved_prompt);
+
+  return NextResponse.json(result, {
+    headers: { "X-AI-Source": gemma ? "gemma" : "fallback" }
+  });
 }

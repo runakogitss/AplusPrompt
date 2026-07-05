@@ -78,3 +78,17 @@ export type CustomerSaveAgentOutput = {
   follow_up_message: string;
   approval_required: boolean;
 };
+
+export type CertificateProgress = {
+  user_id: string;
+  track_id: string;
+  missions_completed: string[];
+  prompt_attempts_count: number;
+  improved_prompts_count: number;
+  saved_playbook_count: number;
+  final_assessment_score: number | null;
+  certificate_unlocked: boolean;
+  certificate_title: string;
+  completed_at: string | null;
+  storage: "supabase" | "local-fallback";
+};

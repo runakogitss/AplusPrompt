@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { DEMO_PROFILE_ID, recordPlaybookSave } from "@/lib/db";
 import { getSupabaseServerClient } from "@/lib/supabase";
 
 const EntrySchema = z.object({
@@ -30,6 +31,7 @@ export async function POST(request: Request) {
 
   const entry = {
     id: parsed.data.id ?? `pb_${Date.now()}`,
+    profile_id: DEMO_PROFILE_ID,
     mission_id: parsed.data.mission_id,
     title: parsed.data.title,
     final_prompt: parsed.data.final_prompt,
@@ -40,5 +42,7 @@ export async function POST(request: Request) {
 
   const { error } = await supabase.from("playbook_entries").insert(entry);
   if (error) return NextResponse.json({ ok: true, entry_id: entry.id, storage: "local-fallback" });
+
+  await recordPlaybookSave();
   return NextResponse.json({ ok: true, entry_id: entry.id, storage: "supabase" });
 }

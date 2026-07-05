@@ -12,14 +12,23 @@ export function hasGemmaConfig() {
   );
 }
 
+export async function checkGemmaAuth(): Promise<boolean> {
+  if (!hasGemmaConfig()) return false;
+  try {
+    await getAccessToken();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function callGemmaJson<T>(task: GemmaTask, payload: unknown): Promise<T | null> {
   if (!hasGemmaConfig()) return null;
 
   try {
     const accessToken = await getAccessToken();
-    const endpoint =
-      process.env.GOOGLE_GEMMA_ENDPOINT ??
-      `https://${process.env.GOOGLE_CLOUD_LOCATION}-aiplatform.googleapis.com/v1/projects/${process.env.GOOGLE_CLOUD_PROJECT}/locations/${process.env.GOOGLE_CLOUD_LOCATION}/publishers/google/models/${process.env.GOOGLE_GEMMA_MODEL}:predict`;
+    const endpoint = buildEndpoint();
+    const prompt = buildPrompt(task, payload);
 
     const response = await fetch(endpoint, {
       method: "POST",
@@ -28,13 +37,12 @@ export async function callGemmaJson<T>(task: GemmaTask, payload: unknown): Promi
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        instances: [
-          {
-            prompt: buildPrompt(task, payload),
-            max_tokens: 1200,
-            temperature: task === "score" || task === "customer_save_agent" ? 0.2 : 0.4
-          }
-        ]
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        generationConfig: {
+          maxOutputTokens: 1200,
+          temperature: task === "score" || task === "customer_save_agent" ? 0.2 : 0.4,
+          responseMimeType: "application/json"
+        }
       })
     });
 
@@ -48,20 +56,41 @@ export async function callGemmaJson<T>(task: GemmaTask, payload: unknown): Promi
   }
 }
 
+function buildEndpoint() {
+  if (process.env.GOOGLE_GEMMA_ENDPOINT) return process.env.GOOGLE_GEMMA_ENDPOINT;
+
+  const project = process.env.GOOGLE_CLOUD_PROJECT!;
+  const location = process.env.GOOGLE_CLOUD_LOCATION!;
+  const model = normalizeModelId(process.env.GOOGLE_GEMMA_MODEL ?? "gemma-2-9b-it");
+
+  return `https://${location}-aiplatform.googleapis.com/v1/projects/${project}/locations/${location}/publishers/google/models/${model}:generateContent`;
+}
+
+function normalizeModelId(model: string) {
+  if (model === "gemma2-9b-it") return "gemma-2-9b-it";
+  return model;
+}
+
 async function getAccessToken() {
   const credentialsJson = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
   const auth = credentialsJson
     ? new GoogleAuth({
-        credentials: JSON.parse(credentialsJson),
+        credentials: parseCredentialsJson(credentialsJson),
         scopes: ["https://www.googleapis.com/auth/cloud-platform"]
       })
     : new GoogleAuth({
         keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS,
         scopes: ["https://www.googleapis.com/auth/cloud-platform"]
       });
+
   const client = await auth.getClient();
   const token = await client.getAccessToken();
   return typeof token === "string" ? token : token.token ?? "";
+}
+
+function parseCredentialsJson(raw: string) {
+  const trimmed = raw.trim().replace(/^['"]|['"]$/g, "");
+  return JSON.parse(trimmed);
 }
 
 function buildPrompt(task: GemmaTask, payload: unknown) {
@@ -83,12 +112,12 @@ function buildPrompt(task: GemmaTask, payload: unknown) {
 }
 
 function extractText(data: any): string | null {
-  if (typeof data?.predictions?.[0] === "string") return data.predictions[0];
-  if (typeof data?.predictions?.[0]?.content === "string") return data.predictions[0].content;
-  if (typeof data?.predictions?.[0]?.text === "string") return data.predictions[0].text;
   if (typeof data?.candidates?.[0]?.content?.parts?.[0]?.text === "string") {
     return data.candidates[0].content.parts[0].text;
   }
+  if (typeof data?.predictions?.[0] === "string") return data.predictions[0];
+  if (typeof data?.predictions?.[0]?.content === "string") return data.predictions[0].content;
+  if (typeof data?.predictions?.[0]?.text === "string") return data.predictions[0].text;
   return null;
 }
 

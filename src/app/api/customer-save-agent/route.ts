@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { recordCustomerSaveRun } from "@/lib/db";
 import { customerSaveAgentFallback } from "@/lib/fallbacks";
 import { callGemmaJson } from "@/lib/gemma";
 import type { CustomerSaveAgentOutput } from "@/lib/types";
@@ -16,5 +17,11 @@ export async function POST(request: Request) {
   if (!parsed.success) return NextResponse.json({ error: "Business type, complaint, policy, and tone are required." }, { status: 400 });
 
   const gemma = await callGemmaJson<CustomerSaveAgentOutput>("customer_save_agent", parsed.data);
-  return NextResponse.json(gemma ?? customerSaveAgentFallback());
+  const result = gemma ?? customerSaveAgentFallback();
+
+  await recordCustomerSaveRun(parsed.data, result as unknown as Record<string, unknown>);
+
+  return NextResponse.json(result, {
+    headers: { "X-AI-Source": gemma ? "gemma" : "fallback" }
+  });
 }

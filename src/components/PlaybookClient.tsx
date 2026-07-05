@@ -5,11 +5,21 @@ import type { PlaybookEntry } from "@/lib/types";
 
 export function PlaybookClient() {
   const [entries, setEntries] = useState<PlaybookEntry[]>([]);
+  const [storage, setStorage] = useState<string>("loading");
 
   useEffect(() => {
-    const localEntries = JSON.parse(localStorage.getItem("aprompt_playbook") ?? "[]") as PlaybookEntry[];
-    setEntries(localEntries);
+    fetch("/api/playbook")
+      .then((response) => response.json())
+      .then((data: { entries: PlaybookEntry[] }) => {
+        setEntries(data.entries ?? []);
+        setStorage(data.entries?.length ? "supabase" : "empty");
+      })
+      .catch(() => setStorage("error"));
   }, []);
+
+  if (storage === "loading") {
+    return <p className="text-ink/70">Loading playbook from Supabase...</p>;
+  }
 
   if (!entries.length) {
     return (
@@ -22,6 +32,7 @@ export function PlaybookClient() {
 
   return (
     <div className="grid gap-4">
+      <p className="text-sm font-bold text-moss">{entries.length} prompt{entries.length === 1 ? "" : "s"} loaded from Supabase.</p>
       {entries.map((entry) => (
         <article key={entry.id} className="rounded-lg border border-ink/10 bg-white p-5 shadow-soft">
           <div className="flex flex-wrap items-start justify-between gap-3">
