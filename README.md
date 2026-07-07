@@ -1,4 +1,4 @@
-# A+Prompt - The AI Gym for Business Owners
+# A+Prompt - The AI Gym for Business Owners (Developer's Notes)
 
 A+Prompt is a practice-first website for non-technical business owners. Users choose a business mission, write a weak prompt, receive rubric-based coaching, compare weak vs improved outputs, save the final prompt to a playbook, and try a supervised Customer Save Agent.
 
