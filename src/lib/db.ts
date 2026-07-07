@@ -1,7 +1,9 @@
 import "server-only";
 
 import { certificateRequirements } from "@/data/certificate";
-import type { CertificateProgress } from "@/lib/types";
+import { getMission, missions } from "@/data/missions";
+import { rubric } from "@/data/rubric";
+import type { CertificateProgress, Mission, PromptRubric, PromptScore, SubscriptionPlan } from "@/lib/types";
 import { getSupabaseServerClient } from "@/lib/supabase";
 
 export const DEMO_PROFILE_ID = "00000000-0000-4000-8000-000000000001";
@@ -21,6 +23,109 @@ const defaultProgress = (): CertificateProgress => ({
   completed_at: null,
   storage: "local-fallback"
 });
+
+const fallbackPlans: SubscriptionPlan[] = [
+  {
+    plan_id: "free",
+    name: "AI Able",
+    price_display: "Free",
+    features: ["Foundation track", "AI Able Certificate", "Basic prompt scoring", "5 saved playbook prompts"],
+    is_mock: true
+  },
+  {
+    plan_id: "pro",
+    name: "AI Operator",
+    price_display: "$9-$19/month",
+    features: ["Unlimited missions", "Full prompt playbook", "Business memory", "Industry context packs", "Customer Save Agent"],
+    is_mock: true
+  },
+  {
+    plan_id: "team",
+    name: "AI Operator Team",
+    price_display: "$49-$199/month",
+    features: ["Multiple users", "Team progress dashboard", "Shared playbooks", "Cohort certificates"],
+    is_mock: true
+  }
+];
+
+function mapMissionRow(row: any): Mission {
+  return {
+    id: row.id,
+    title: row.title,
+    subtitle: row.subtitle,
+    difficulty: row.difficulty,
+    skill_focus: row.skill_focus ?? [],
+    scenario: row.scenario ?? {},
+    bad_prompt_example: row.bad_prompt_example,
+    improved_prompt_example: row.improved_prompt_example,
+    success_criteria: row.success_criteria ?? [],
+    locked: row.is_locked ?? false
+  };
+}
+
+function fallbackRubric(): PromptRubric {
+  return {
+    total_points: rubric.total_points,
+    categories: rubric.categories.map((category) => ({ ...category })),
+    grades: rubric.grades.map((grade) => ({ ...grade }))
+  };
+}
+
+export async function getMissionsFromDb(): Promise<Mission[]> {
+  const supabase = getSupabaseServerClient();
+  if (!supabase) return missions;
+
+  const { data, error } = await supabase.from("missions").select("*").order("created_at", { ascending: true });
+  if (error || !data?.length) return missions;
+  return data.map(mapMissionRow);
+}
+
+export async function getMissionFromDb(id: string): Promise<Mission | undefined> {
+  const supabase = getSupabaseServerClient();
+  if (!supabase) return getMission(id);
+
+  const { data, error } = await supabase.from("missions").select("*").eq("id", id).maybeSingle();
+  if (error || !data) return getMission(id);
+  return mapMissionRow(data);
+}
+
+export async function getRubricFromDb(): Promise<PromptRubric> {
+  const supabase = getSupabaseServerClient();
+  if (!supabase) return fallbackRubric();
+
+  const { data, error } = await supabase.from("rubric_categories").select("*").order("weight", { ascending: false });
+  if (error || !data?.length) return fallbackRubric();
+
+  return {
+    total_points: 100,
+    categories: data.map((row) => ({
+      id: row.id,
+      name: row.name,
+      weight: row.weight,
+      question: row.question
+    })),
+    grades: rubric.grades.map((grade) => ({ ...grade }))
+  } as PromptRubric;
+}
+
+export async function getSubscriptionPlansFromDb(): Promise<SubscriptionPlan[]> {
+  const supabase = getSupabaseServerClient();
+  if (!supabase) return fallbackPlans;
+
+  const { data, error } = await supabase.from("subscription_plans").select("*");
+  if (error || !data?.length) return fallbackPlans;
+
+  const order = ["free", "pro", "team"];
+  return data
+    .map((row) => ({
+      plan_id: row.plan_id,
+      name: row.name,
+      price_display: row.price_display,
+      features: row.features ?? [],
+      is_mock: row.is_mock ?? true
+    }))
+    .sort((a, b) => order.indexOf(a.plan_id) - order.indexOf(b.plan_id));
+}
 
 export async function ensureDemoProfile() {
   const supabase = getSupabaseServerClient();
@@ -78,13 +183,13 @@ function isCertificateUnlocked(progress: Omit<CertificateProgress, "storage" | "
   );
 }
 
-export async function recordPromptAttempt(missionId: string, userPrompt: string, score: number) {
+export async function recordPromptAttempt(missionId: string, userPrompt: string, score: PromptScore) {
   const supabase = await ensureDemoProfile();
   if (!supabase) return;
 
   const progress = await getCertificateProgress();
   const nextAttempts = progress.prompt_attempts_count + 1;
-  const nextScore = Math.max(progress.final_assessment_score ?? 0, score);
+  const nextScore = Math.max(progress.final_assessment_score ?? 0, score.total_score);
   const nextProgress = {
     ...progress,
     prompt_attempts_count: nextAttempts,
@@ -94,11 +199,26 @@ export async function recordPromptAttempt(missionId: string, userPrompt: string,
       : [...progress.missions_completed, missionId]
   };
 
-  await supabase.from("prompt_attempts").insert({
+  const { data: attempt } = await supabase.from("prompt_attempts").insert({
     profile_id: DEMO_PROFILE_ID,
     mission_id: missionId,
     user_prompt: userPrompt
-  });
+  }).select("id").maybeSingle();
+
+  if (attempt?.id) {
+    await supabase.from("prompt_scores").insert({
+      attempt_id: attempt.id,
+      mission_id: missionId,
+      total_score: score.total_score,
+      grade: score.grade,
+      user_title: score.user_title,
+      category_scores: score.category_scores,
+      strengths: score.strengths,
+      weaknesses: score.weaknesses,
+      coach_explanation: score.coach_explanation,
+      next_reps: score.next_reps
+    });
+  }
 
   await upsertCertificateProgress(nextProgress);
 }

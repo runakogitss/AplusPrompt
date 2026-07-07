@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getMission } from "@/data/missions";
-import { recordImprovedPrompt } from "@/lib/db";
+import { getMissionFromDb, recordImprovedPrompt } from "@/lib/db";
 import { improveFallback } from "@/lib/fallbacks";
 import { callGemmaJson } from "@/lib/gemma";
 import type { ImprovedPrompt } from "@/lib/types";
@@ -16,7 +15,7 @@ export async function POST(request: Request) {
   const parsed = RequestSchema.safeParse(await request.json());
   if (!parsed.success) return NextResponse.json({ error: "Prompt cannot be empty." }, { status: 400 });
 
-  const mission = getMission(parsed.data.mission_id);
+  const mission = await getMissionFromDb(parsed.data.mission_id);
   if (!mission) return NextResponse.json({ error: "Mission not found." }, { status: 404 });
 
   const gemma = await callGemmaJson<ImprovedPrompt>("improve", { ...parsed.data, mission });

@@ -20,6 +20,24 @@ export type Mission = {
   locked?: boolean;
 };
 
+export type RubricCategory = {
+  id: RubricCategoryId;
+  name: string;
+  weight: number;
+  question: string;
+};
+
+export type PromptRubric = {
+  total_points: number;
+  categories: RubricCategory[];
+  grades: Array<{
+    min: number;
+    max: number;
+    grade: string;
+    title: string;
+  }>;
+};
+
 export type PromptScore = {
   total_score: number;
   grade: string;
@@ -60,6 +78,14 @@ export type PlaybookEntry = {
   inputs_to_replace?: string[];
   safety_notes?: string[];
   created_at: string;
+};
+
+export type SubscriptionPlan = {
+  plan_id: string;
+  name: string;
+  price_display: string;
+  features: string[];
+  is_mock: boolean;
 };
 
 export type CustomerSaveAgentOutput = {

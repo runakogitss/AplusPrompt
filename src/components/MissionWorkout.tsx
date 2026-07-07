@@ -79,6 +79,12 @@ export function MissionWorkout({ mission }: { mission: Mission }) {
       final_prompt: improved.improved_prompt,
       score: score.total_score,
       tags: mission.skill_focus.slice(0, 3).map((tag) => tag.toLowerCase().replaceAll(" ", "-")),
+      when_to_use: `Use this when working on: ${mission.subtitle}`,
+      inputs_to_replace: Object.keys(mission.scenario).map((key) => key.replaceAll("_", " ")),
+      safety_notes: [
+        "Review the output before using it with customers.",
+        "Keep any approval checks or policy constraints in the prompt."
+      ],
       created_at: new Date().toISOString()
     };
 

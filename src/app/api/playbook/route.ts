@@ -10,6 +10,9 @@ const EntrySchema = z.object({
   final_prompt: z.string(),
   score: z.number(),
   tags: z.array(z.string()).default([]),
+  when_to_use: z.string().optional(),
+  inputs_to_replace: z.array(z.string()).default([]),
+  safety_notes: z.array(z.string()).default([]),
   created_at: z.string().optional()
 });
 
@@ -37,6 +40,9 @@ export async function POST(request: Request) {
     final_prompt: parsed.data.final_prompt,
     score: parsed.data.score,
     tags: parsed.data.tags,
+    when_to_use: parsed.data.when_to_use,
+    inputs_to_replace: parsed.data.inputs_to_replace,
+    safety_notes: parsed.data.safety_notes,
     created_at: parsed.data.created_at ?? new Date().toISOString()
   };
 

@@ -1,7 +1,9 @@
-import { missions } from "@/data/missions";
 import { MissionCard } from "@/components/MissionCard";
+import { getMissionsFromDb } from "@/lib/db";
 
-export default function MissionsPage() {
+export default async function MissionsPage() {
+  const missions = await getMissionsFromDb();
+
   return (
     <main className="mx-auto max-w-6xl px-5 py-10">
       <div className="max-w-3xl">

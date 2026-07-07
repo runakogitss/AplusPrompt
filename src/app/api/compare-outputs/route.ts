@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getMission } from "@/data/missions";
+import { getMissionFromDb } from "@/lib/db";
 import { comparisonFallback } from "@/lib/fallbacks";
 import { callGemmaJson } from "@/lib/gemma";
 import type { OutputComparison } from "@/lib/types";
@@ -15,7 +15,7 @@ export async function POST(request: Request) {
   const parsed = RequestSchema.safeParse(await request.json());
   if (!parsed.success) return NextResponse.json({ error: "Original and improved prompts are required." }, { status: 400 });
 
-  const mission = getMission(parsed.data.mission_id);
+  const mission = await getMissionFromDb(parsed.data.mission_id);
   if (!mission) return NextResponse.json({ error: "Mission not found." }, { status: 404 });
 
   const gemma = await callGemmaJson<OutputComparison>("compare", { ...parsed.data, mission });

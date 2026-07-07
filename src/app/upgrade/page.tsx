@@ -1,13 +1,10 @@
-const features = [
-  "Advanced business missions",
-  "Full prompt playbook",
-  "Business memory",
-  "Industry context packs",
-  "Customer Save Agent templates",
-  "Team and cohort certificates"
-];
+import { getSubscriptionPlansFromDb } from "@/lib/db";
 
-export default function UpgradePage() {
+export default async function UpgradePage() {
+  const plans = await getSubscriptionPlansFromDb();
+  const freePlan = plans.find((plan) => plan.plan_id === "free") ?? plans[0];
+  const proPlan = plans.find((plan) => plan.plan_id === "pro") ?? plans[1] ?? plans[0];
+
   return (
     <main className="mx-auto max-w-5xl px-5 py-10">
       <p className="text-sm font-black uppercase tracking-[0.18em] text-clay">Mock subscription</p>
@@ -18,15 +15,20 @@ export default function UpgradePage() {
       <div className="mt-8 grid gap-5 md:grid-cols-2">
         <section className="rounded-lg border border-ink/10 bg-white p-6 shadow-soft">
           <p className="text-sm font-black uppercase text-clay">Free</p>
-          <h2 className="mt-2 text-3xl font-black">AI Able</h2>
-          <p className="mt-2 text-ink/70">Foundation track, certificate, basic scoring, and limited playbook saves.</p>
+          <h2 className="mt-2 text-3xl font-black">{freePlan.name}</h2>
+          <p className="mt-2 text-ink/70">{freePlan.price_display}</p>
+          <ul className="mt-5 space-y-3 text-sm font-semibold text-ink/75">
+            {freePlan.features.map((feature) => (
+              <li key={feature}>- {feature}</li>
+            ))}
+          </ul>
         </section>
         <section className="rounded-lg border-2 border-moss bg-white p-6 shadow-soft">
           <p className="text-sm font-black uppercase text-clay">Pro teaser</p>
-          <h2 className="mt-2 text-3xl font-black">AI Operator</h2>
-          <p className="mt-2 text-ink/70">$9-$19/month planning range for business owners.</p>
+          <h2 className="mt-2 text-3xl font-black">{proPlan.name}</h2>
+          <p className="mt-2 text-ink/70">{proPlan.price_display} planning range for business owners.</p>
           <ul className="mt-5 space-y-3 text-sm font-semibold text-ink/75">
-            {features.map((feature) => (
+            {proPlan.features.map((feature) => (
               <li key={feature}>- {feature}</li>
             ))}
           </ul>

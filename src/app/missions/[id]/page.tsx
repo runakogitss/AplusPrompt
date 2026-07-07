@@ -1,9 +1,9 @@
 import { notFound } from "next/navigation";
 import { MissionWorkout } from "@/components/MissionWorkout";
-import { getMission } from "@/data/missions";
+import { getMissionFromDb } from "@/lib/db";
 
-export default function MissionDetailPage({ params }: { params: { id: string } }) {
-  const mission = getMission(params.id);
+export default async function MissionDetailPage({ params }: { params: { id: string } }) {
+  const mission = await getMissionFromDb(params.id);
   if (!mission) notFound();
 
   return (
