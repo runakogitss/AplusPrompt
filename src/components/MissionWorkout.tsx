@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { getGuestProfileId } from "@/lib/guestClient";
+import { saveLocalPlaybookEntry } from "@/lib/localPlaybook";
 import type { ImprovedPrompt, Mission, OutputComparison, PlaybookEntry, PromptScore } from "@/lib/types";
 
 type Status = "idle" | "scoring" | "done" | "error";
@@ -32,10 +34,11 @@ export function MissionWorkout({ mission }: { mission: Mission }) {
     setAiSource(null);
     setShowHint(false);
     try {
+      const profileId = await getGuestProfileId();
       const scoreResponse = await fetch("/api/score-prompt", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mission_id: mission.id, user_prompt: prompt })
+        body: JSON.stringify({ mission_id: mission.id, user_prompt: prompt, profile_id: profileId })
       });
       if (!scoreResponse.ok) throw new Error("Request failed");
       const scoreResult = (await scoreResponse.json()) as PromptScore;
@@ -44,7 +47,7 @@ export function MissionWorkout({ mission }: { mission: Mission }) {
       const improvedResponse = await fetch("/api/improve-prompt", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mission_id: mission.id, user_prompt: prompt, score_result: scoreResult })
+        body: JSON.stringify({ mission_id: mission.id, user_prompt: prompt, score_result: scoreResult, profile_id: profileId })
       });
       if (!improvedResponse.ok) throw new Error("Request failed");
       const improvedResult = (await improvedResponse.json()) as ImprovedPrompt;
@@ -72,11 +75,14 @@ export function MissionWorkout({ mission }: { mission: Mission }) {
 
   async function savePrompt() {
     if (!improved || !score) return;
+    const profileId = await getGuestProfileId();
     const entry: PlaybookEntry = {
       id: `pb_${Date.now()}`,
       mission_id: mission.id,
       title: `${mission.title} prompt`,
       final_prompt: improved.improved_prompt,
+      attempted_prompt: prompt,
+      ai_best_approach: improved.improved_prompt,
       score: score.total_score,
       tags: mission.skill_focus.slice(0, 3).map((tag) => tag.toLowerCase().replaceAll(" ", "-")),
       when_to_use: `Use this when working on: ${mission.subtitle}`,
@@ -91,9 +97,12 @@ export function MissionWorkout({ mission }: { mission: Mission }) {
     const response = await fetch("/api/playbook", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(entry)
+      body: JSON.stringify({ ...entry, profile_id: profileId })
     });
-    const data = (await response.json()) as { storage?: string };
+    const data = (await response.json()) as { ok?: boolean; storage?: string };
+    if (!data.ok || data.storage !== "supabase") {
+      saveLocalPlaybookEntry(entry);
+    }
     setSaveStorage(data.storage ?? "saved");
     setSaved(true);
   }

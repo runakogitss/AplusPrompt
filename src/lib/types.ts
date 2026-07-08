@@ -72,6 +72,8 @@ export type PlaybookEntry = {
   mission_id: string;
   title: string;
   final_prompt: string;
+  attempted_prompt?: string;
+  ai_best_approach?: string;
   score: number;
   tags: string[];
   when_to_use?: string;
@@ -86,6 +88,13 @@ export type SubscriptionPlan = {
   price_display: string;
   features: string[];
   is_mock: boolean;
+};
+
+export type GuestSession = {
+  profile_id: string;
+  session_id: string | null;
+  guest_name: string;
+  storage: "supabase" | "local-fallback";
 };
 
 export type CustomerSaveAgentOutput = {
@@ -107,6 +116,7 @@ export type CustomerSaveAgentOutput = {
 
 export type CertificateProgress = {
   user_id: string;
+  display_name?: string;
   track_id: string;
   missions_completed: string[];
   prompt_attempts_count: number;

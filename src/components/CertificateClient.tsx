@@ -3,13 +3,15 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { certificateRequirements } from "@/data/certificate";
+import { getGuestProfileId } from "@/lib/guestClient";
 import type { CertificateProgress } from "@/lib/types";
 
 export function CertificateClient() {
   const [progress, setProgress] = useState<CertificateProgress | null>(null);
 
   useEffect(() => {
-    fetch("/api/certificate/progress")
+    getGuestProfileId()
+      .then((profileId) => fetch(`/api/certificate/progress${profileId ? `?profile_id=${encodeURIComponent(profileId)}` : ""}`))
       .then((response) => response.json())
       .then(setProgress)
       .catch(() => setProgress(null));
@@ -27,7 +29,7 @@ export function CertificateClient() {
         {progress.certificate_unlocked ? (
           <div className="rounded-lg border-4 border-moss/20 bg-paper p-8 text-center">
             <p className="text-sm font-black uppercase tracking-[0.18em] text-clay">This certifies that</p>
-            <p className="mt-4 text-5xl font-black">Demo Business Owner</p>
+            <p className="mt-4 text-5xl font-black">{progress.display_name ?? "Business Owner"}</p>
             <p className="mx-auto mt-4 max-w-2xl text-lg leading-8 text-ink/70">
               completed the A+Prompt foundation track and demonstrated practical ability to structure prompts, provide context, improve outputs through feedback, and use AI safely for basic business tasks.
             </p>

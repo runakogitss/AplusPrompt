@@ -10,19 +10,7 @@ export const DEMO_PROFILE_ID = "00000000-0000-4000-8000-000000000001";
 
 export type { CertificateProgress };
 
-const defaultProgress = (): CertificateProgress => ({
-  user_id: "demo-user",
-  track_id: certificateRequirements.track_id,
-  missions_completed: [],
-  prompt_attempts_count: 0,
-  improved_prompts_count: 0,
-  saved_playbook_count: 0,
-  final_assessment_score: null,
-  certificate_unlocked: false,
-  certificate_title: certificateRequirements.certificate_title,
-  completed_at: null,
-  storage: "local-fallback"
-});
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const fallbackPlans: SubscriptionPlan[] = [
   {
@@ -48,6 +36,21 @@ const fallbackPlans: SubscriptionPlan[] = [
   }
 ];
 
+const defaultProgress = (profileId = "demo-user"): CertificateProgress => ({
+  user_id: profileId,
+  display_name: profileId === "demo-user" ? "Demo Business Owner" : "Guest Player",
+  track_id: certificateRequirements.track_id,
+  missions_completed: [],
+  prompt_attempts_count: 0,
+  improved_prompts_count: 0,
+  saved_playbook_count: 0,
+  final_assessment_score: null,
+  certificate_unlocked: false,
+  certificate_title: certificateRequirements.certificate_title,
+  completed_at: null,
+  storage: "local-fallback"
+});
+
 function mapMissionRow(row: any): Mission {
   return {
     id: row.id,
@@ -69,6 +72,35 @@ function fallbackRubric(): PromptRubric {
     categories: rubric.categories.map((category) => ({ ...category })),
     grades: rubric.grades.map((grade) => ({ ...grade }))
   };
+}
+
+function getSafeProfileId(profileId?: string | null) {
+  return profileId && UUID_PATTERN.test(profileId) ? profileId : DEMO_PROFILE_ID;
+}
+
+async function ensureProfile(profileId?: string | null) {
+  const supabase = getSupabaseServerClient();
+  if (!supabase) return null;
+
+  const safeProfileId = getSafeProfileId(profileId);
+  if (safeProfileId === DEMO_PROFILE_ID) {
+    await supabase.from("profiles").upsert({
+      id: DEMO_PROFILE_ID,
+      display_name: "Demo Business Owner",
+      business_type: "Bakery",
+      is_guest: true,
+      last_seen_at: new Date().toISOString()
+    });
+  } else {
+    await supabase.from("profiles").update({ last_seen_at: new Date().toISOString() }).eq("id", safeProfileId);
+  }
+
+  return { supabase, profileId: safeProfileId };
+}
+
+export async function ensureDemoProfile() {
+  const profile = await ensureProfile(DEMO_PROFILE_ID);
+  return profile?.supabase ?? null;
 }
 
 export async function getMissionsFromDb(): Promise<Mission[]> {
@@ -127,39 +159,35 @@ export async function getSubscriptionPlansFromDb(): Promise<SubscriptionPlan[]> 
     .sort((a, b) => order.indexOf(a.plan_id) - order.indexOf(b.plan_id));
 }
 
-export async function ensureDemoProfile() {
-  const supabase = getSupabaseServerClient();
-  if (!supabase) return null;
+export async function getCertificateProgress(profileId?: string | null): Promise<CertificateProgress> {
+  const profile = await ensureProfile(profileId);
+  if (!profile) return defaultProgress();
 
-  await supabase.from("profiles").upsert({
-    id: DEMO_PROFILE_ID,
-    display_name: "Demo Business Owner",
-    business_type: "Bakery"
-  });
+  const { data: profileRow } = await profile.supabase
+    .from("profiles")
+    .select("display_name, email, is_guest")
+    .eq("id", profile.profileId)
+    .maybeSingle();
+  const displayName = profileRow?.display_name ?? profileRow?.email ?? (profileRow?.is_guest ? "Guest Player" : "Business Owner");
 
-  return supabase;
-}
-
-export async function getCertificateProgress(): Promise<CertificateProgress> {
-  const supabase = await ensureDemoProfile();
-  if (!supabase) return defaultProgress();
-
-  const { data } = await supabase
+  const { data } = await profile.supabase
     .from("certificate_progress")
     .select("*")
-    .eq("profile_id", DEMO_PROFILE_ID)
+    .eq("profile_id", profile.profileId)
     .eq("track_id", certificateRequirements.track_id)
     .maybeSingle();
 
   if (!data) {
     return {
-      ...defaultProgress(),
+      ...defaultProgress(profile.profileId),
+      display_name: displayName,
       storage: "supabase"
     };
   }
 
   return {
-    user_id: "demo-user",
+    user_id: profile.profileId,
+    display_name: displayName,
     track_id: data.track_id,
     missions_completed: data.missions_completed ?? [],
     prompt_attempts_count: data.prompt_attempts_count ?? 0,
@@ -183,30 +211,32 @@ function isCertificateUnlocked(progress: Omit<CertificateProgress, "storage" | "
   );
 }
 
-export async function recordPromptAttempt(missionId: string, userPrompt: string, score: PromptScore) {
-  const supabase = await ensureDemoProfile();
-  if (!supabase) return;
+export async function recordPromptAttempt(missionId: string, userPrompt: string, score: PromptScore, profileId?: string | null) {
+  const profile = await ensureProfile(profileId);
+  if (!profile) return;
 
-  const progress = await getCertificateProgress();
-  const nextAttempts = progress.prompt_attempts_count + 1;
-  const nextScore = Math.max(progress.final_assessment_score ?? 0, score.total_score);
+  const progress = await getCertificateProgress(profile.profileId);
   const nextProgress = {
     ...progress,
-    prompt_attempts_count: nextAttempts,
-    final_assessment_score: nextScore,
+    prompt_attempts_count: progress.prompt_attempts_count + 1,
+    final_assessment_score: Math.max(progress.final_assessment_score ?? 0, score.total_score),
     missions_completed: progress.missions_completed.includes(missionId)
       ? progress.missions_completed
       : [...progress.missions_completed, missionId]
   };
 
-  const { data: attempt } = await supabase.from("prompt_attempts").insert({
-    profile_id: DEMO_PROFILE_ID,
-    mission_id: missionId,
-    user_prompt: userPrompt
-  }).select("id").maybeSingle();
+  const { data: attempt } = await profile.supabase
+    .from("prompt_attempts")
+    .insert({
+      profile_id: profile.profileId,
+      mission_id: missionId,
+      user_prompt: userPrompt
+    })
+    .select("id")
+    .maybeSingle();
 
   if (attempt?.id) {
-    await supabase.from("prompt_scores").insert({
+    await profile.supabase.from("prompt_scores").insert({
       attempt_id: attempt.id,
       mission_id: missionId,
       total_score: score.total_score,
@@ -220,52 +250,55 @@ export async function recordPromptAttempt(missionId: string, userPrompt: string,
     });
   }
 
-  await upsertCertificateProgress(nextProgress);
+  await upsertCertificateProgress(nextProgress, profile.profileId);
 }
 
-export async function recordImprovedPrompt(missionId: string, improvedPrompt: string) {
-  const supabase = await ensureDemoProfile();
-  if (!supabase) return;
+export async function recordImprovedPrompt(missionId: string, improvedPrompt: string, profileId?: string | null) {
+  const profile = await ensureProfile(profileId);
+  if (!profile) return;
 
-  const progress = await getCertificateProgress();
+  const progress = await getCertificateProgress(profile.profileId);
   const nextProgress = {
     ...progress,
     improved_prompts_count: progress.improved_prompts_count + 1
   };
 
-  const { data: latestAttempt } = await supabase
+  const { data: latestAttempt } = await profile.supabase
     .from("prompt_attempts")
     .select("id")
-    .eq("profile_id", DEMO_PROFILE_ID)
+    .eq("profile_id", profile.profileId)
     .eq("mission_id", missionId)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
 
   if (latestAttempt?.id) {
-    await supabase.from("prompt_attempts").update({ improved_prompt: improvedPrompt }).eq("id", latestAttempt.id);
+    await profile.supabase.from("prompt_attempts").update({ improved_prompt: improvedPrompt }).eq("id", latestAttempt.id);
   }
 
-  await upsertCertificateProgress(nextProgress);
+  await upsertCertificateProgress(nextProgress, profile.profileId);
 }
 
-export async function recordPlaybookSave() {
-  const supabase = await ensureDemoProfile();
-  if (!supabase) return;
+export async function recordPlaybookSave(profileId?: string | null) {
+  const profile = await ensureProfile(profileId);
+  if (!profile) return;
 
-  const progress = await getCertificateProgress();
-  await upsertCertificateProgress({
-    ...progress,
-    saved_playbook_count: progress.saved_playbook_count + 1
-  });
+  const progress = await getCertificateProgress(profile.profileId);
+  await upsertCertificateProgress(
+    {
+      ...progress,
+      saved_playbook_count: progress.saved_playbook_count + 1
+    },
+    profile.profileId
+  );
 }
 
-export async function recordCustomerSaveRun(input: Record<string, string>, output: Record<string, unknown>) {
-  const supabase = await ensureDemoProfile();
-  if (!supabase) return;
+export async function recordCustomerSaveRun(input: Record<string, string>, output: Record<string, unknown>, profileId?: string | null) {
+  const profile = await ensureProfile(profileId);
+  if (!profile) return;
 
-  await supabase.from("customer_save_runs").insert({
-    profile_id: DEMO_PROFILE_ID,
+  await profile.supabase.from("customer_save_runs").insert({
+    profile_id: profile.profileId,
     business_type: input.business_type,
     complaint: input.complaint,
     policy: input.policy,
@@ -275,13 +308,13 @@ export async function recordCustomerSaveRun(input: Record<string, string>, outpu
   });
 }
 
-async function upsertCertificateProgress(progress: CertificateProgress) {
-  const supabase = getSupabaseServerClient();
-  if (!supabase) return;
+async function upsertCertificateProgress(progress: CertificateProgress, profileId = DEMO_PROFILE_ID) {
+  const profile = await ensureProfile(profileId);
+  if (!profile) return;
 
   const unlocked = isCertificateUnlocked(progress);
   const row = {
-    profile_id: DEMO_PROFILE_ID,
+    profile_id: profile.profileId,
     track_id: certificateRequirements.track_id,
     missions_completed: progress.missions_completed,
     prompt_attempts_count: progress.prompt_attempts_count,
@@ -294,17 +327,17 @@ async function upsertCertificateProgress(progress: CertificateProgress) {
     updated_at: new Date().toISOString()
   };
 
-  const { data: existing } = await supabase
+  const { data: existing } = await profile.supabase
     .from("certificate_progress")
     .select("id")
-    .eq("profile_id", DEMO_PROFILE_ID)
+    .eq("profile_id", profile.profileId)
     .eq("track_id", certificateRequirements.track_id)
     .maybeSingle();
 
   if (existing?.id) {
-    await supabase.from("certificate_progress").update(row).eq("id", existing.id);
+    await profile.supabase.from("certificate_progress").update(row).eq("id", existing.id);
     return;
   }
 
-  await supabase.from("certificate_progress").insert(row);
+  await profile.supabase.from("certificate_progress").insert(row);
 }

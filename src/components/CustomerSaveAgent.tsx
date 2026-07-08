@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { customerSavePolicy } from "@/data/policy";
+import { getGuestProfileId } from "@/lib/guestClient";
 import type { CustomerSaveAgentOutput } from "@/lib/types";
 
 const seededComplaint =
@@ -18,10 +19,11 @@ export function CustomerSaveAgent() {
 
   async function runAgent() {
     setLoading(true);
+    const profileId = await getGuestProfileId();
     const response = await fetch("/api/customer-save-agent", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ business_type: businessType, complaint, policy, tone })
+      body: JSON.stringify({ business_type: businessType, complaint, policy, tone, profile_id: profileId })
     });
     setAiSource(response.headers.get("X-AI-Source"));
     setResult(await response.json());

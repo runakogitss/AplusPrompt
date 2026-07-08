@@ -8,7 +8,8 @@ import type { ImprovedPrompt } from "@/lib/types";
 const RequestSchema = z.object({
   mission_id: z.string(),
   user_prompt: z.string().min(1),
-  score_result: z.unknown().optional()
+  score_result: z.unknown().optional(),
+  profile_id: z.string().optional()
 });
 
 export async function POST(request: Request) {
@@ -21,7 +22,7 @@ export async function POST(request: Request) {
   const gemma = await callGemmaJson<ImprovedPrompt>("improve", { ...parsed.data, mission });
   const result = gemma ?? improveFallback(parsed.data.mission_id);
 
-  await recordImprovedPrompt(parsed.data.mission_id, result.improved_prompt);
+  await recordImprovedPrompt(parsed.data.mission_id, result.improved_prompt, parsed.data.profile_id);
 
   return NextResponse.json(result, {
     headers: { "X-AI-Source": gemma ? "gemma" : "fallback" }

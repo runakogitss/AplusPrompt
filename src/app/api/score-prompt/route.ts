@@ -7,7 +7,8 @@ import type { PromptScore } from "@/lib/types";
 
 const RequestSchema = z.object({
   mission_id: z.string(),
-  user_prompt: z.string().min(1)
+  user_prompt: z.string().min(1),
+  profile_id: z.string().optional()
 });
 
 export async function POST(request: Request) {
@@ -21,7 +22,7 @@ export async function POST(request: Request) {
   const gemma = await callGemmaJson<PromptScore>("score", { ...parsed.data, mission, rubric });
   const result = calibrateScore(parsed.data.user_prompt, gemma ?? scoreFallback(parsed.data.user_prompt, parsed.data.mission_id));
 
-  await recordPromptAttempt(parsed.data.mission_id, parsed.data.user_prompt, result);
+  await recordPromptAttempt(parsed.data.mission_id, parsed.data.user_prompt, result, parsed.data.profile_id);
 
   return NextResponse.json(result, {
     headers: { "X-AI-Source": gemma ? "gemma" : "fallback" }

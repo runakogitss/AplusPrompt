@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { getGuestProfileId } from "@/lib/guestClient";
+import { getLocalPlaybookEntries } from "@/lib/localPlaybook";
 import type { PlaybookEntry } from "@/lib/types";
 
 export function PlaybookClient() {
@@ -8,13 +10,24 @@ export function PlaybookClient() {
   const [storage, setStorage] = useState<string>("loading");
 
   useEffect(() => {
-    fetch("/api/playbook")
+    getGuestProfileId()
+      .then((profileId) => fetch(`/api/playbook${profileId ? `?profile_id=${encodeURIComponent(profileId)}` : ""}`))
       .then((response) => response.json())
       .then((data: { entries: PlaybookEntry[] }) => {
-        setEntries(data.entries ?? []);
-        setStorage(data.entries?.length ? "supabase" : "empty");
+        const remoteEntries = data.entries ?? [];
+        const localEntries = getLocalPlaybookEntries();
+        const mergedEntries = [
+          ...remoteEntries,
+          ...localEntries.filter((localEntry) => !remoteEntries.some((remoteEntry) => remoteEntry.id === localEntry.id))
+        ];
+        setEntries(mergedEntries);
+        setStorage(remoteEntries.length ? "supabase" : localEntries.length ? "local-fallback" : "empty");
       })
-      .catch(() => setStorage("error"));
+      .catch(() => {
+        const localEntries = getLocalPlaybookEntries();
+        setEntries(localEntries);
+        setStorage(localEntries.length ? "local-fallback" : "error");
+      });
   }, []);
 
   if (storage === "loading") {
@@ -48,7 +61,16 @@ export function PlaybookClient() {
               ))}
             </div>
           </div>
-          <p className="mt-4 whitespace-pre-wrap rounded-md bg-paper p-4 text-sm leading-6">{entry.final_prompt}</p>
+          <div className="mt-4 grid gap-3">
+            <div className="rounded-md bg-paper p-4">
+              <p className="text-xs font-black uppercase text-clay">Previous prompt attempt</p>
+              <p className="mt-2 whitespace-pre-wrap text-sm leading-6">{entry.attempted_prompt ?? entry.final_prompt}</p>
+            </div>
+            <div className="rounded-md bg-mint p-4">
+              <p className="text-xs font-black uppercase text-clay">AI best approach</p>
+              <p className="mt-2 whitespace-pre-wrap text-sm leading-6">{entry.ai_best_approach ?? entry.final_prompt}</p>
+            </div>
+          </div>
           {entry.when_to_use ? (
             <p className="mt-4 text-sm leading-6 text-ink/70">
               <span className="font-black text-ink">When to use:</span> {entry.when_to_use}
