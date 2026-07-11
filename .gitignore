@@ -1,9 +1,4 @@
-.next
-node_modules
-out
-dist
+data/
+node_modules/
 .env
-.env.local
-.vercel
-*.log
-aplusprompthackathon-*.json
+.DS_Store

@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AplusPrompt</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="paper-grain" aria-hidden="true"></div>
+    <header class="topbar">
+      <button class="brand-button" id="homeButton" type="button" aria-label="Go to AplusPrompt home">
+        <span class="brand-mark">A+</span>
+        <span>AplusPrompt</span>
+      </button>
+      <nav class="top-actions" aria-label="Progress">
+        <span class="pill" id="beltPill">White Belt</span>
+        <span class="pill xp-pill" id="xpPill">0 XP</span>
+      </nav>
+    </header>
+
+    <main id="app"></main>
+
+    <template id="landingTemplate">
+      <section class="hero-band">
+        <div class="hero-copy">
+          <span class="stamp">AI training for business people</span>
+          <h1>AplusPrompt</h1>
+          <p class="lead">Practice AI prompting like a skill. Your coach diagnoses weak prompts, teaches the missing principle, and helps you retry until the output is business-ready.</p>
+          <div class="hero-actions">
+            <button class="primary-button" type="button" data-action="start">Start Training</button>
+            <button class="secondary-button" type="button" data-action="missions">View Missions</button>
+          </div>
+        </div>
+        <div class="hero-coach">
+          <img src="aplusprompt-assets/mascots/coach_pointing_clipboard.png" alt="AplusPrompt dog coach pointing at a clipboard" />
+          <div class="coach-bubble">First mission: market research prompts that get real business answers.</div>
+        </div>
+      </section>
+      <section class="quick-proof" aria-label="Training loop">
+        <div>
+          <strong>Diagnose</strong>
+          <span>Spot missing context, sources, format, and action.</span>
+        </div>
+        <div>
+          <strong>Practice</strong>
+          <span>Retry the prompt and earn XP for improvement.</span>
+        </div>
+        <div>
+          <strong>Apply</strong>
+          <span>Leave with a prompt you can use for real research.</span>
+        </div>
+      </section>
+    </template>
+
+    <template id="missionsTemplate">
+      <section class="page-heading">
+        <span class="stamp">Training missions</span>
+        <h2>Choose your next AI business skill</h2>
+      </section>
+      <section class="mission-grid">
+        <article class="mission-card available">
+          <div class="mission-image">
+            <img src="aplusprompt-assets/mascots/coach_checklist.png" alt="AplusPrompt dog coach with checklist" />
+          </div>
+          <div>
+            <span class="mission-kicker">Available now</span>
+            <h3>Market Research Coach</h3>
+            <p>Learn how to ask AI for competitor research with context, evidence, comparison criteria, and next actions.</p>
+            <button class="primary-button compact" type="button" data-action="train">Start Mission</button>
+          </div>
+        </article>
+        <article class="mission-card locked"><span>Locked</span><h3>Data Analysis Coach</h3><p>Turn messy spreadsheet questions into structured analysis prompts.</p></article>
+        <article class="mission-card locked"><span>Locked</span><h3>Marketing Campaign Coach</h3><p>Brief AI on audience, offer, channels, and campaign constraints.</p></article>
+        <article class="mission-card locked"><span>Locked</span><h3>Sales Message Coach</h3><p>Write sales prompts that respect customer pain, proof, and tone.</p></article>
+        <article class="mission-card locked"><span>Locked</span><h3>Customer Support Coach</h3><p>Design reply prompts for clarity, empathy, and escalation logic.</p></article>
+        <article class="mission-card locked"><span>Locked</span><h3>AI Workflow Coach</h3><p>Combine prompts, tools, and checks into repeatable operator workflows.</p></article>
+      </section>
+    </template>
+
+    <template id="trainingTemplate">
+      <section class="training-layout">
+        <aside class="coach-panel">
+          <img id="coachImage" src="aplusprompt-assets/mascots/coach_thinking.png" alt="AplusPrompt dog coach thinking" />
+          <span class="stamp">Market Research Coach</span>
+          <h2>White Belt to Green Belt</h2>
+          <p>Write a prompt that asks AI to research competitors for a real business decision.</p>
+          <div class="belt-track" aria-label="Belt progress">
+            <span class="active">White</span>
+            <span>Yellow</span>
+            <span>Green</span>
+          </div>
+        </aside>
+        <section class="workbench">
+          <div class="mission-brief">
+            <h2>Mission brief</h2>
+            <p>Begin with a rough prompt, then improve it using the coach feedback. Try the beginner prompt below if you want a quick demo.</p>
+            <button class="secondary-button compact" type="button" data-action="use-demo">Use demo prompt</button>
+          </div>
+          <form class="prompt-form" id="promptForm">
+            <label for="promptInput">Your prompt attempt</label>
+            <textarea id="promptInput" name="prompt" rows="8" placeholder="Example: Find competitors for my business."></textarea>
+            <div class="form-actions">
+              <button class="primary-button" type="submit">Review Prompt</button>
+              <button class="secondary-button" type="button" data-action="finish">Finish Mission</button>
+            </div>
+          </form>
+          <div id="feedbackPanel" class="feedback-panel empty">
+            <h2>Coach feedback will appear here</h2>
+            <p>Submit a prompt to get a diagnosis, lesson cards, XP, and retry instructions.</p>
+          </div>
+        </section>
+      </section>
+    </template>
+
+    <template id="summaryTemplate">
+      <section class="summary-layout">
+        <div class="summary-copy">
+          <span class="stamp">Mission complete</span>
+          <h2>Market research prompt upgraded</h2>
+          <p>You practiced adding context, customer focus, source expectations, structure, assumptions, and business action.</p>
+          <div class="summary-stats">
+            <strong id="summaryXp">0 XP</strong>
+            <span id="summaryBelt">White Belt</span>
+          </div>
+          <h3>Final prompt</h3>
+          <pre id="finalPrompt"></pre>
+          <h3>Sample research brief shape</h3>
+          <ul id="briefList"></ul>
+          <button class="primary-button" type="button" data-action="train-again">Train Again</button>
+        </div>
+        <div class="summary-coach">
+          <img src="aplusprompt-assets/mascots/coach_celebration.png" alt="AplusPrompt dog coach celebrating" />
+        </div>
+      </section>
+    </template>
+
+    <script src="app.js"></script>
+  </body>
+</html>
